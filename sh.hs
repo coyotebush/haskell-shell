@@ -1,4 +1,6 @@
 #!/usr/bin/env runhaskell
 
-main = putStrLn "Hello world!"
+main = do
+       putStr "$ "
+       putStrLn "exit"
 
