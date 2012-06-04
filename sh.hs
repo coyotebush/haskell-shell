@@ -8,8 +8,7 @@ main = do
        putStrLn "exit"
 
 shellLoop = do
-            putStr "$ "
-            hFlush stdout
+            shellPrompt
             input <- try (getLine)
             case input of
               Left e ->
@@ -18,13 +17,20 @@ shellLoop = do
                 else ioError e
               Right inStr ->
                 do
-                case inStr of
-                  "cd"  -> do
-                           dir <- getHomeDirectory
-                           setCurrentDirectory dir
-                  "pwd" -> do
-                           dir <- getCurrentDirectory
-                           putStrLn dir
-                  ""    -> return ()
+                case lookup inStr builtins of
+                  Just builtin -> builtin
+                  Nothing -> return ()
                 shellLoop
+
+shellPrompt = do
+              putStr "$ "
+              hFlush stdout
+
+builtins = [ ("cd", changeDir)
+           , ("pwd", printDir)
+           ]
+
+changeDir = getHomeDirectory >>= setCurrentDirectory
+
+printDir = getCurrentDirectory >>= putStrLn
 
