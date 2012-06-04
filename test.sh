@@ -1,7 +1,7 @@
 #!/bin/bash
 
 EXE1='bash --norc --noediting -i'
-EXE2='./sh.hs'
+EXE2='./sh'
 DIFF='diff -U3'
 
 set -e
