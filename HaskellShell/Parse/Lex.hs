@@ -1,21 +1,31 @@
 module HaskellShell.Parse.Lex (ShellToken(..), lexInput) where
 
 data ShellToken = Blank
-                | NormalToken String
-                | ControlToken String
+                | Word String
+                | Operator String
                 | Quote Char String
                 deriving Show
 
 lexInput :: String -> [ShellToken]
 lexInput "" = []
-lexInput (c:rem) | isSpace c       = Blank : (lexInput rem)
-                 | isQuote c       = let (cs, _:rest) = break (== c) rem in
-                                     (Quote c cs) : (lexInput rest)
-                 | isControlChar c = let (cs, rest) = span isControlChar rem in
-                                     (ControlToken (c:cs)) : (lexInput rest)
-                 | otherwise       = let (cs, rest) = break (\x -> isSpace x || isQuote x || isControlChar x) rem in
-                                     (NormalToken (c:cs)) : (lexInput rest)
+lexInput (c:rem) | isSpace c            = Blank : (lexInput rem)
+                 | isQuote c            = let (cs, _:rest) = break (== c) rem in
+                                          (Quote c cs) : (lexInput rest)
+                 | [c] `elem` operators = let (o, rest) = takeOperator [c] rem in
+                                          (Operator o) : (lexInput rest)
+                 | otherwise            = let (cs, rest) = break (\x -> isSpace x || isQuote x || [x] `elem` operators) rem in
+                                     (Word (c:cs)) : (lexInput rest)
+
+takeOperator :: String -> String -> (String, String)
+takeOperator o (x:xs) = let n = o ++ [x] in
+                        if n `elem` operators
+                        then takeOperator n xs
+                        else (o, x:xs)
 
 isSpace = (==) ' '
 isQuote = flip elem "'\"`"
-isControlChar = flip elem "|&;()<>"
+
+-- from dash(1) man page
+operators = [ "&",  "&&", "(",  ")",  ";",  ";;", "|",  "||"
+            , "<",  ">",  ">|", "<<", ">>", "<&", ">&", "<<-", "<>" ]
+
