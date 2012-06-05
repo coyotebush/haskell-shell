@@ -13,5 +13,5 @@ shellException :: [String] -> IOException -> IO ()
 shellException ss e = shellError (ss ++ errorMessage e)
 
 errorMessage :: IOException -> [String]
-errorMessage e | isDoesNotExistError e = catMaybes [ioeGetFileName e, Just "No such file or directory"] 
+errorMessage e | isDoesNotExistError e = maybeToList (ioeGetFileName e) ++ ["No such file or directory"]
 errorMessage _ = ["Error"]
