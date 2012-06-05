@@ -1,7 +1,9 @@
 #!/usr/bin/env runhaskell
-import System.Directory
 import System.IO
 import System.IO.Error
+
+import HaskellShell.Builtins
+import HaskellShell.Parse
 
 main = do
        shellLoop
@@ -17,7 +19,7 @@ shellLoop = do
                 else ioError e
               Right inStr ->
                 do
-                let args = words inStr
+                let args = parseInput inStr
                 if length args > 0 then
                   case lookup (head args) builtins of
                     Just builtin -> builtin (tail args)
@@ -28,13 +30,4 @@ shellLoop = do
 shellPrompt = do
               putStr "$ "
               hFlush stdout
-
-builtins = [ ("cd", changeDir)
-           , ("pwd", printDir)
-           ]
-
-changeDir []      = getHomeDirectory >>= setCurrentDirectory
-changeDir (dir:_) = setCurrentDirectory dir
-
-printDir _ = getCurrentDirectory >>= putStrLn
 
