@@ -3,6 +3,7 @@ import Control.Monad
 import System.IO
 import System.IO.Error
 
+import HaskellShell.Input
 import HaskellShell.Parse
 import HaskellShell.Run
 
@@ -12,7 +13,7 @@ main = do
 
 shellLoop = do
             shellPrompt
-            input <- try (getLine)
+            input <- try (getInput)
             case input of
               Left e ->
                 if isEOFError e
