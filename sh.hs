@@ -3,7 +3,6 @@ import Control.Monad
 import System.IO
 import System.IO.Error
 
-import HaskellShell.Input
 import HaskellShell.Parse
 import HaskellShell.Run
 
@@ -27,4 +26,20 @@ shellLoop = do
 shellPrompt = do
               putStr "$ "
               hFlush stdout
+
+getInput :: IO String
+getInput = do
+           line <- getLine
+           case line of
+             "" -> return line
+             _  -> case last line of
+                    '\\' -> do
+                       secondaryPrompt
+                       next <- getInput
+                       return (init line ++ next)
+                    _    -> return line
+
+secondaryPrompt = do
+                  putStr "> "
+                  hFlush stdout
 
