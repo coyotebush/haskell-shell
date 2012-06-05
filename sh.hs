@@ -17,9 +17,12 @@ shellLoop = do
                 else ioError e
               Right inStr ->
                 do
-                case lookup inStr builtins of
-                  Just builtin -> builtin
-                  Nothing -> return ()
+                let args = words inStr
+                if length args > 0 then
+                  case lookup (head args) builtins of
+                    Just builtin -> builtin (tail args)
+                    Nothing -> return ()
+                else return ()
                 shellLoop
 
 shellPrompt = do
@@ -30,7 +33,8 @@ builtins = [ ("cd", changeDir)
            , ("pwd", printDir)
            ]
 
-changeDir = getHomeDirectory >>= setCurrentDirectory
+changeDir []      = getHomeDirectory >>= setCurrentDirectory
+changeDir (dir:_) = setCurrentDirectory dir
 
-printDir = getCurrentDirectory >>= putStrLn
+printDir _ = getCurrentDirectory >>= putStrLn
 
