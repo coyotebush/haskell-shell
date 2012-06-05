@@ -5,6 +5,9 @@ EXE2='./sh'
 DIFF='diff -U3'
 
 set -e
+
+ghc --make sh.hs
+
 for t in tests/[0-9]*
 do
     echo Running test case $t
