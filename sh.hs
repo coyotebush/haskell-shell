@@ -30,14 +30,12 @@ shellPrompt = do
 getInput :: IO String
 getInput = do
            line <- getLine
-           case line of
-             "" -> return line
-             _  -> case last line of
-                    '\\' -> do
-                       secondaryPrompt
-                       next <- getInput
-                       return (init line ++ next)
-                    _    -> return line
+           if not (null line) && last line == '\\'
+           then do
+                secondaryPrompt
+                next <- getInput
+                return (init line ++ next)
+           else return line
 
 secondaryPrompt = do
                   putStr "> "
