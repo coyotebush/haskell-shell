@@ -17,6 +17,7 @@ lexInput (c:rem) | isSpace c            = Blank : (lexInput rem)
                                      (Word (c:cs)) : (lexInput rest)
 
 takeOperator :: String -> String -> (String, String)
+takeOperator o []     = (o, "")
 takeOperator o (x:xs) = let n = o ++ [x] in
                         if n `elem` operators
                         then takeOperator n xs
