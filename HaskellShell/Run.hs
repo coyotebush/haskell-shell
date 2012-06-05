@@ -13,7 +13,7 @@ runPipeline = mapM_ runCommand
 runCommand :: G.Command -> IO ()
 runCommand cmd | length cmd > 0 = do
                                   case lookup (head cmd) builtins of
-                                    Just builtin -> builtin (tail cmd)
+                                    Just builtin -> runBuiltin builtin cmd
                                     Nothing -> do
                                                (_, _, _, p) <- P.createProcess
                                                  (P.proc (head cmd) (tail cmd))

@@ -1,7 +1,7 @@
 #!/usr/bin/env runhaskell
 import Control.Monad
 import System.IO
-import System.IO.Error
+import qualified System.IO.Error as IOE
 
 import HaskellShell.Parse
 import HaskellShell.Run
@@ -12,10 +12,10 @@ main = do
 
 shellLoop = do
             shellPrompt
-            input <- try (getInput)
+            input <- IOE.try (getInput)
             case input of
               Left e ->
-                if isEOFError e
+                if IOE.isEOFError e
                 then return ()
                 else ioError e
               Right inStr ->

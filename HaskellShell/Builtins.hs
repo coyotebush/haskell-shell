@@ -1,22 +1,23 @@
-module HaskellShell.Builtins (builtins) where
+module HaskellShell.Builtins (builtins, runBuiltin) where
 import Control.Exception
 import System.Exit
 import System.Directory
-import System.IO.Error
+import HaskellShell.Error
 import qualified HaskellShell.Grammar as G
 
-builtins :: [(G.Argument, [G.Argument] -> IO ())]
+type Builtin = [G.Argument] -> IO ()
+
+builtins :: [(G.Argument, Builtin)]
 builtins = [ ("cd", changeDir)
            , ("pwd", printDir)
            , ("exit", exitShell)
            ]
 
-changeDir []      = getHomeDirectory >>= setCurrentDirectory
-changeDir (dir:_) = handle handler $ setCurrentDirectory dir
-                    where handler e | isDoesNotExistError e
-                            = putStrLn $ "sh.hs: cd: " ++ dir ++ ": No such file or directory"
-                          handler _
-                            = putStrLn "sh.hs: cd: error"
+runBuiltin :: Builtin -> [G.Argument] -> IO ()
+runBuiltin b (name:args) = handle (shellException [name]) $ b args
+
+changeDir []      = getHomeDirectory >>= changeDir . (:[])
+changeDir (dir:_) = setCurrentDirectory dir
 
 printDir _ = getCurrentDirectory >>= putStrLn
 
