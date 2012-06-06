@@ -2,11 +2,13 @@ module HaskellShell.Builtins (builtins, runBuiltin) where
 import Control.Exception
 import System.Exit
 import System.Directory
+import System.IO
 import System.Posix.Process as PP
+import qualified System.Process as P (StdStream(..))
 import HaskellShell.Error
 import qualified HaskellShell.Grammar as G
 
-type Builtin = [G.Argument] -> IO ()
+type Builtin = Handle -> [G.Argument] -> IO ()
 
 builtins :: [(G.Argument, Builtin)]
 builtins = [ ("cd", changeDir)
@@ -15,17 +17,17 @@ builtins = [ ("cd", changeDir)
            , ("exec", execCommand)
            ]
 
-runBuiltin :: Builtin -> [G.Argument] -> IO ()
-runBuiltin b (name:args) = handle (shellException [name]) $ b args
+runBuiltin :: Handle -> Builtin -> [G.Argument] -> IO ()
+runBuiltin h b (name:args) = handle (shellException [name]) $ b h args
 
-changeDir []      = getHomeDirectory >>= changeDir . (:[])
-changeDir (dir:_) = setCurrentDirectory dir
+changeDir h []      = getHomeDirectory >>= changeDir h . (:[])
+changeDir _ (dir:_) = setCurrentDirectory dir
 
-printDir _ = getCurrentDirectory >>= putStrLn
+printDir h _ = getCurrentDirectory >>= hPutStrLn h
 
-exitShell [] = do
-               putStrLn "exit"
-               exitSuccess
+exitShell h [] = do
+                 hPutStrLn h "exit"
+                 exitSuccess
 
-execCommand (cmd:args) = PP.executeFile cmd True args Nothing
+execCommand _ (cmd:args) = PP.executeFile cmd True args Nothing
 

@@ -1,6 +1,8 @@
-module HaskellShell.Grammar (Argument, Command, Pipeline, List) where
+module HaskellShell.Grammar (Argument, Command, Pipe(..), PipelineElement, Pipeline, List) where
 
 type Argument = String
 type Command = [Argument]
-type Pipeline = [Command]
+data Pipe = Pipe | NoPipe deriving (Eq, Show)
+type PipelineElement = (Command, Pipe)
+type Pipeline = [PipelineElement]
 type List = [Pipeline]
