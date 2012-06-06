@@ -17,8 +17,10 @@ runPipeline = runPipelineElements stdin
 runPipelineElements :: Handle -> [G.PipelineElement] -> IO ()
 runPipelineElements input ((cmd, G.NoPipe):[]) = M.void $ runCommand (P.UseHandle input) (P.UseHandle stdout) (P.UseHandle stderr) cmd
 runPipelineElements input ((cmd, G.Pipe):rem)  = do
-                                                 nextPipe <- fmap fromJust $ runCommand (P.UseHandle input) P.CreatePipe (P.UseHandle stderr) cmd
-                                                 runPipelineElements nextPipe rem
+                                                 nextPipe <- runCommand (P.UseHandle input) P.CreatePipe (P.UseHandle stderr) cmd
+                                                 case nextPipe of
+                                                   Just ph -> runPipelineElements ph rem
+                                                   Nothing -> runPipelineElements stdin rem
 
 runCommand :: P.StdStream -> P.StdStream -> P.StdStream -> G.Command -> IO (Maybe Handle)
 runCommand _ _ _ []  = return Nothing
