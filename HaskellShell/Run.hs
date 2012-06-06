@@ -8,7 +8,7 @@ runList :: G.List -> IO ()
 runList = mapM_ runPipeline
 
 runPipeline :: G.Pipeline -> IO ()
-runPipeline = mapM_ runCommand
+runPipeline = mapM_ (runCommand . snd)
 
 runCommand :: G.Command -> IO ()
 runCommand [] = return ()
