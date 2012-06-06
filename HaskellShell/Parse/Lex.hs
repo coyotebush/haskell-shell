@@ -1,10 +1,26 @@
-module HaskellShell.Parse.Lex (ShellToken(..), lexInput) where
+module HaskellShell.Parse.Lex
+     ( ShellToken(..)
+     , showToken
+     , dropBlanks
+     , lexInput
+     , listOperators
+     , pipelineOperators
+     , redirectionOperators
+     , isOperator
+     ) where
 
 data ShellToken = Blank
                 | Word String
                 | Operator String
                 | Quote Char String
                 deriving Show
+
+showToken :: ShellToken -> String
+showToken Blank        = " "
+showToken (Word s)     = s
+showToken (Operator s) = s
+showToken (Quote c s)  = s
+
 
 lexInput :: String -> [ShellToken]
 lexInput "" = []
@@ -26,7 +42,17 @@ takeOperator o (x:xs) = let n = o ++ [x] in
 isSpace = (==) ' '
 isQuote = flip elem "'\"`"
 
--- from dash(1) man page
-operators = [ "&",  "&&", "(",  ")",  ";",  ";;", "|",  "||"
-            , "<",  ">",  ">|", "<<", ">>", "<&", ">&", "<<-", "<>" ]
+-- based on bash(1) and dash(1) man pages
+listOperators = [ ";", "&", "&&", "||" ]
+pipelineOperators = [ "|", "|&" ]
+redirectionOperators = [ "<", ">", ">|", "<<", ">>", "<&", ">&", "<<-", "<>" ]
+operators = listOperators ++ pipelineOperators ++ redirectionOperators -- "(", ")", ";;"
+
+isOperator :: [String] -> ShellToken -> Bool
+isOperator ops (Operator s) = s `elem` ops
+isOperator _   _            = False
+
+dropBlanks = filter isNotBlank
+             where isNotBlank Blank = False
+                   isNotBlank _     = True
 
