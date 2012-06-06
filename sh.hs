@@ -16,6 +16,6 @@ shellLoop hist = do
                    Left e | IOE.isEOFError e -> putStrLn "exit"
                           | otherwise        -> ioError e
                    Right inStr -> do
-                                  runList $ parseInput inStr
+                                  runList hist $ parseInput inStr
                                   shellLoop (addToHistory hist inStr)
 

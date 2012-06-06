@@ -8,34 +8,35 @@ import System.Posix.IO (createPipe, fdToHandle, handleToFd, closeFd)
 import HaskellShell.Builtins
 import HaskellShell.Error
 import qualified HaskellShell.Grammar as G
+import HaskellShell.History (History)
 
-runList :: G.List -> IO ()
-runList = mapM_ runPipeline
+runList :: History -> G.List -> IO ()
+runList hist = mapM_ (runPipeline hist)
 
-runPipeline :: G.Pipeline -> IO ()
-runPipeline = runPipelineElements stdin
+runPipeline :: History -> G.Pipeline -> IO ()
+runPipeline hist = runPipelineElements hist stdin
 --runPipeline = mapM_ (runCommand (P.P.UseHandle stdin) (P.P.UseHandle stdout) (P.P.UseHandle stderr) . snd)
 
-runPipelineElements :: Handle -> [G.PipelineElement] -> IO ()
-runPipelineElements input ((cmd, G.NoPipe):[]) = M.void $ runCommand (P.UseHandle input) (P.UseHandle stdout) (P.UseHandle stderr) cmd
-runPipelineElements input ((cmd, G.Pipe):rem)  = do
-                                                 nextPipe <- runCommand (P.UseHandle input) P.CreatePipe (P.UseHandle stderr) cmd
+runPipelineElements :: History -> Handle -> [G.PipelineElement] -> IO ()
+runPipelineElements hist input ((cmd, G.NoPipe):[]) = M.void $ runCommand hist (P.UseHandle input) (P.UseHandle stdout) (P.UseHandle stderr) cmd
+runPipelineElements hist input ((cmd, G.Pipe):rem)  = do
+                                                 nextPipe <- runCommand hist (P.UseHandle input) P.CreatePipe (P.UseHandle stderr) cmd
                                                  case nextPipe of
-                                                   Just ph -> runPipelineElements ph rem
-                                                   Nothing -> runPipelineElements stdin rem
+                                                   Just ph -> runPipelineElements hist ph rem
+                                                   Nothing -> runPipelineElements hist stdin rem
 
-runCommand :: P.StdStream -> P.StdStream -> P.StdStream -> G.Command -> IO (Maybe Handle)
-runCommand _ _ _ []  = return Nothing
-runCommand i o e cmd = case lookup (head cmd) builtins of
+runCommand :: History -> P.StdStream -> P.StdStream -> P.StdStream -> G.Command -> IO (Maybe Handle)
+runCommand _ _ _ _ []  = return Nothing
+runCommand hist i o e cmd = case lookup (head cmd) builtins of
                        Just builtin -> case o of
                                          (P.UseHandle h) -> do
-                                                            runBuiltin h builtin cmd
+                                                            runBuiltin hist h builtin cmd
                                                             return Nothing
                                          P.CreatePipe    -> do
                                                             (fr, fw) <- createPipe
                                                             hr <- fdToHandle fr
                                                             hw <- fdToHandle fw
-                                                            runBuiltin hw builtin cmd
+                                                            runBuiltin hist hw builtin cmd
                                                             handleToFd hw >>= closeFd
                                                             return (Just hr)
                        Nothing -> do
