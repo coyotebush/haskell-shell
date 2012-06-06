@@ -9,6 +9,8 @@ module HaskellShell.Parse.Lex
      , isOperator
      ) where
 
+data ShellChar = Escaped Char | Unescaped Char deriving (Eq, Show)
+
 data ShellToken = Blank
                 | Word String
                 | Operator String
@@ -21,6 +23,14 @@ showToken (Word s)     = s
 showToken (Operator s) = s
 showToken (Quote c s)  = s
 
+escapes :: String -> [ShellChar]
+escapes []            = []
+escapes ('\\':c:rest) = Escaped c : escapes rest
+escapes (c:rest)      = Unescaped c : escapes rest
+
+unescape :: ShellChar -> Char
+unescape (Escaped c)   = c
+unescape (Unescaped c) = c
 
 lexInput :: String -> [ShellToken]
 lexInput "" = []
