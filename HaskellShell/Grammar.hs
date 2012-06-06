@@ -1,4 +1,4 @@
-module HaskellShell.Grammar (Argument, Command, Pipe(..), Pipeline, List) where
+module HaskellShell.Grammar (Argument, Command, Pipe(..), PipelineElement, Pipeline, List) where
 
 type Argument = String
 type Command = [Argument]
