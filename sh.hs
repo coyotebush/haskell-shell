@@ -1,6 +1,7 @@
 #!/usr/bin/env runhaskell
 import Control.Monad
 import System.IO
+import System.Posix.Signals
 import qualified System.IO.Error as IOE
 
 import HaskellShell.Parse
@@ -11,8 +12,10 @@ main = do
        putStrLn "exit"
 
 shellLoop = do
+            installHandler keyboardSignal (Catch newShellPrompt) Nothing
             shellPrompt
             input <- IOE.try (getInput)
+            installHandler keyboardSignal (Catch (putStrLn "")) Nothing
             case input of
               Left e ->
                 if IOE.isEOFError e
@@ -26,6 +29,10 @@ shellLoop = do
 shellPrompt = do
               putStr "$ "
               hFlush stdout
+
+newShellPrompt = do
+                 putStrLn ""
+                 shellPrompt
 
 getInput :: IO String
 getInput = do
