@@ -6,15 +6,17 @@ promptInput = do
               installHandler keyboardSignal (Catch newShellPrompt) Nothing
               shellPrompt
               input <- getInput
-              installHandler keyboardSignal (Catch (putStrLn "")) Nothing
+              installHandler keyboardSignal (Catch blankLine) Nothing
               return input
 
 shellPrompt = do
               putStr "$ "
               hFlush stdout
 
+blankLine = putStrLn ""
+
 newShellPrompt = do
-                 putStrLn ""
+                 blankLine
                  shellPrompt
 
 getInput :: IO String
