@@ -17,8 +17,8 @@ builtins = [ ("cd", changeDir)
            , ("exec", execCommand)
            ]
 
-runBuiltin :: P.StdStream -> Builtin -> [G.Argument] -> IO ()
-runBuiltin (P.UseHandle h) b (name:args) = handle (shellException [name]) $ b h args
+runBuiltin :: Handle -> Builtin -> [G.Argument] -> IO ()
+runBuiltin h b (name:args) = handle (shellException [name]) $ b h args
 
 changeDir h []      = getHomeDirectory >>= changeDir h . (:[])
 changeDir _ (dir:_) = setCurrentDirectory dir

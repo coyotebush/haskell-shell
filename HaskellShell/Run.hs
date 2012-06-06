@@ -3,6 +3,7 @@ import qualified Control.Monad as M
 import Data.Maybe (fromJust)
 import System.IO (stdin, stdout, stderr, Handle)
 import qualified System.Process as P
+import System.Posix.IO (createPipe, fdToHandle, handleToFd, closeFd)
 import HaskellShell.Builtins
 import qualified HaskellShell.Grammar as G
 
@@ -22,9 +23,17 @@ runPipelineElements input ((cmd, G.Pipe):rem)  = do
 runCommand :: P.StdStream -> P.StdStream -> P.StdStream -> G.Command -> IO (Maybe Handle)
 runCommand _ _ _ []  = return Nothing
 runCommand i o e cmd = case lookup (head cmd) builtins of
-                       Just builtin -> do
-                         runBuiltin o builtin cmd
-                         return Nothing
+                       Just builtin -> case o of
+                                         (P.UseHandle h) -> do
+                                                            runBuiltin h builtin cmd
+                                                            return Nothing
+                                         P.CreatePipe    -> do
+                                                            (fr, fw) <- createPipe
+                                                            hr <- fdToHandle fr
+                                                            hw <- fdToHandle fw
+                                                            runBuiltin hw builtin cmd
+                                                            handleToFd hw >>= closeFd
+                                                            return (Just hr)
                        Nothing -> do
                          (_, out, _, p) <- P.createProcess $
                            (P.proc (head cmd) (tail cmd)) { P.std_in  = i
