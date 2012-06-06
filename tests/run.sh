@@ -14,6 +14,6 @@ for t in tests/[0-9]*
 do
     echo Running test case $t
     HISTFILE= $EXE1 < $t > $TESTDIR/output.1 2>&1
-    $EXE2 < $t | sed -e 's/sh.hs/bash/' > $TESTDIR/output.2
+    $EXE2 < $t 2>&1 | sed -e 's/sh.hs/bash/' > $TESTDIR/output.2
     $DIFF $TESTDIR/output.1 $TESTDIR/output.2 || exit
 done
