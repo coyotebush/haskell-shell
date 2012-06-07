@@ -1,11 +1,18 @@
-module HaskellShell.State.Environment (Environment, initializeEnvironment) where
-import Data.Map
-import System.Environment
+module HaskellShell.State.Environment (initializeEnvironment, readEnv) where
+import System.Posix.Env
 
-type Environment = Map String String
-initializeEnvironment :: IO Environment
-initializeEnvironment = getEnvironment >>= return . union defaultEnvironment . fromList
+initializeEnvironment :: IO ()
+initializeEnvironment = mapM_ (\(k, v) -> setEnv k v False) defaultEnvironment
 
-defaultEnvironment = fromList [ ("HISTSIZE", "10")
-                              ]
+defaultEnvironment = [ ("HISTSIZE", "10")
+                     ]
+
+readEnv :: Read a => String -> IO (Maybe a)
+readEnv k = getEnv k >>= return . maybeMaybeRead
+
+maybeMaybeRead :: Read a => Maybe String -> Maybe a
+maybeMaybeRead Nothing  = Nothing
+maybeMaybeRead (Just s) = case reads s of
+                            [(x, "")] -> Just x
+                            _         -> Nothing
 

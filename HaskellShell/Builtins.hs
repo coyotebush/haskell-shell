@@ -1,8 +1,10 @@
 module HaskellShell.Builtins (builtins, runBuiltin) where
 import Control.Exception
+import qualified Data.Map as Map
 import System.Exit
 import System.Directory
 import System.IO
+import System.Posix.Env
 import System.Posix.Process as PP
 import qualified System.Process as P (StdStream(..))
 import HaskellShell.Error
@@ -18,6 +20,7 @@ builtins = [ ("cd", changeDir)
            , ("exit", exitShell)
            , ("exec", execCommand)
            , ("history", printHistory)
+           , ("setenv", setEnvironment)
            ]
 
 runBuiltin :: ShellState -> Handle -> Builtin -> [G.Argument] -> IO ()
@@ -38,4 +41,6 @@ printHistory st h _ = mapM_ printHistoryEntry (getHistory $ history st)
                       where printHistoryEntry (n, s) = hPutStrLn h $ (spacePad 5 $ show n) ++ "  " ++ s
                             spacePad w s = replicate (w - length s) ' ' ++ s
 
+setEnvironment st _ (k:v:_) = setEnv k v True
+setEnvironment _  _ _       = return ()
 

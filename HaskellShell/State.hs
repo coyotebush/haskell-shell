@@ -1,18 +1,19 @@
 module HaskellShell.State (ShellState(..), initializeState, pushHistory) where
+import System.Posix.Env
 import HaskellShell.State.History
 import HaskellShell.State.Environment
 
 data ShellState = ShellState { history :: History
-                             , environment :: Environment
                              }
                   deriving Show
 
 initializeState :: IO ShellState
-initializeState = do 
-                  env <- initializeEnvironment
-                  return $ ShellState { history = emptyHistory 10
-                                      , environment = env
-                                      }
+initializeState = do
+                  initializeEnvironment
+                  return $ ShellState { history = emptyHistory }
 
-pushHistory state x = state { history = (addToHistory (history state) x) }
+pushHistory :: ShellState -> String -> IO ShellState
+pushHistory state x = do
+                      depth <- readEnv "HISTSIZE"
+                      return $ state { history = (addToHistory (history state) depth x) }
 
