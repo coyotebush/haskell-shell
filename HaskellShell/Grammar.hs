@@ -1,8 +1,10 @@
-module HaskellShell.Grammar (Argument, Command, Pipe(..), PipelineElement, Pipeline, List) where
+module HaskellShell.Grammar where
 
 type Argument = String
 type Command = [Argument]
-data Pipe = Pipe | NoPipe deriving (Eq, Show)
-type PipelineElement = (Command, Pipe)
+data Stream = Input | Output | Error
+data Destination = Inherit | Pipe | File FilePath | AppendFile FilePath
+data Redirection = Stream Destination
+type PipelineElement = (Command, [Redirection])
 type Pipeline = [PipelineElement]
 type List = [Pipeline]
