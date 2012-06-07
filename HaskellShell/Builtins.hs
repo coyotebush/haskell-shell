@@ -34,6 +34,8 @@ exitShell _ h [] = do
 
 execCommand _ _ (cmd:args) = PP.executeFile cmd True args Nothing
 
-printHistory st h _ = mapM_ (hPutStrLn h) (getHistory $ history st)
+printHistory st h _ = mapM_ printHistoryEntry (getHistory $ history st)
+                      where printHistoryEntry (n, s) = hPutStrLn h $ (spacePad 5 $ show n) ++ "  " ++ s
+                            spacePad w s = replicate (w - length s) ' ' ++ s
 
 
