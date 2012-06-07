@@ -1,6 +1,5 @@
 module HaskellShell.Builtins (builtins, runBuiltin) where
 import Control.Exception
-import Data.Foldable (toList)
 import System.Exit
 import System.Directory
 import System.IO
@@ -8,7 +7,7 @@ import System.Posix.Process as PP
 import qualified System.Process as P (StdStream(..))
 import HaskellShell.Error
 import HaskellShell.State
-import HaskellShell.State.History (History(..))
+import HaskellShell.State.History (getHistory)
 import qualified HaskellShell.Grammar as G
 
 type Builtin = ShellState -> Handle -> [G.Argument] -> IO ()
@@ -35,6 +34,6 @@ exitShell _ h [] = do
 
 execCommand _ _ (cmd:args) = PP.executeFile cmd True args Nothing
 
-printHistory st h _ = mapM_ (hPutStrLn h) (toList $ entries $ history st)
+printHistory st h _ = mapM_ (hPutStrLn h) (getHistory $ history st)
 
 
