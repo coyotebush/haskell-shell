@@ -16,6 +16,7 @@ shellLoop st = do
                  Left e | IOE.isEOFError e -> putStrLn "exit"
                         | otherwise        -> ioError e
                  Right inStr -> do
-                                runList st $ parseInput inStr
-                                shellLoop (pushHistory st inStr)
+                                let newState = pushHistory st inStr
+                                runList newState $ parseInput inStr
+                                shellLoop newState
 
