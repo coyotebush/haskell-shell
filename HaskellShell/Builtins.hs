@@ -7,10 +7,11 @@ import System.IO
 import System.Posix.Process as PP
 import qualified System.Process as P (StdStream(..))
 import HaskellShell.Error
-import HaskellShell.History (History(..))
+import HaskellShell.State
+import HaskellShell.State.History (History(..))
 import qualified HaskellShell.Grammar as G
 
-type Builtin = History -> Handle -> [G.Argument] -> IO ()
+type Builtin = ShellState -> Handle -> [G.Argument] -> IO ()
 
 builtins :: [(G.Argument, Builtin)]
 builtins = [ ("cd", changeDir)
@@ -20,10 +21,10 @@ builtins = [ ("cd", changeDir)
            , ("history", printHistory)
            ]
 
-runBuiltin :: History -> Handle -> Builtin -> [G.Argument] -> IO ()
-runBuiltin i h b (name:args) = handle (shellException [name]) $ b i h args
+runBuiltin :: ShellState -> Handle -> Builtin -> [G.Argument] -> IO ()
+runBuiltin st h b (name:args) = handle (shellException [name]) $ b st h args
 
-changeDir i h []      = getHomeDirectory >>= changeDir i h . (:[])
+changeDir st h []      = getHomeDirectory >>= changeDir st h . (:[])
 changeDir _ _ (dir:_) = setCurrentDirectory dir
 
 printDir _ h _ = getCurrentDirectory >>= hPutStrLn h
@@ -34,6 +35,6 @@ exitShell _ h [] = do
 
 execCommand _ _ (cmd:args) = PP.executeFile cmd True args Nothing
 
-printHistory i h _ = mapM_ (hPutStrLn h) (toList $ entries i)
+printHistory st h _ = mapM_ (hPutStrLn h) (toList $ entries $ history st)
 
 

@@ -1,4 +1,4 @@
-module HaskellShell.History where
+module HaskellShell.State.History where
 import qualified Data.Sequence as Seq
 
 data History = History { depth :: Int
