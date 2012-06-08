@@ -1,10 +1,12 @@
 module HaskellShell.Run (runList) where
 import qualified Control.Monad as M
 import Data.Maybe (fromJust)
+import System.Exit
 import System.IO (stdin, stdout, stderr, Handle)
 import qualified System.Process as P
 import System.Posix.IO (createPipe, fdToHandle, handleToFd, closeFd)
 import HaskellShell.Builtins
+import HaskellShell.Error
 import qualified HaskellShell.Grammar as G
 
 runList :: G.List -> IO ()
@@ -42,6 +44,17 @@ runCommand i o e cmd = case lookup (head cmd) builtins of
                                                           , P.std_out = o
                                                           , P.std_err = e
                                                           }
-                         P.waitForProcess p
+                         code <- P.waitForProcess p
+                         case code of
+                           ExitFailure 127 -> shellError [(head cmd), "command not found"]
+                           _               -> return ()
                          return out
+{-
+processOpen :: PI.ProcessHandle -> IO Bool
+processOpen p = do
+                p_ <- PI.withProcessHandle p $ \p_ -> return (p_,p_)
+                case p_ of
+                  PI.ClosedHandle _ -> return False
+                  PI.OpenHandle _   -> return True
+-}
 
