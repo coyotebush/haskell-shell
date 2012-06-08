@@ -1,5 +1,6 @@
 module HaskellShell.Input (promptInput) where
 import System.IO
+import System.Posix.Env
 import System.Posix.Signals
 
 promptInput = do 
@@ -10,7 +11,7 @@ promptInput = do
               return input
 
 shellPrompt = do
-              putStr "$ "
+              getEnvDefault "PS1" "" >>= putStr
               hFlush stdout
 
 blankLine = putStrLn ""
@@ -30,6 +31,6 @@ getInput = do
            else return line
 
 secondaryPrompt = do
-                  putStr "> "
+                  getEnvDefault "PS2" "" >>= putStr
                   hFlush stdout
 

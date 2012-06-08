@@ -4,7 +4,9 @@ import System.Posix.Env
 initializeEnvironment :: IO ()
 initializeEnvironment = mapM_ (\(k, v) -> setEnv k v False) defaultEnvironment
 
-defaultEnvironment = [ ("HISTSIZE", "10")
+defaultEnvironment = [ ("HISTSIZE", "10" )
+                     , ("PS1",      ">> ")
+                     , ("PS2",      "> " )
                      ]
 
 readEnv :: Read a => String -> IO (Maybe a)

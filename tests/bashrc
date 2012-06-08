@@ -1,4 +1,4 @@
-PS1='$ '
+PS1='>> '
 setenv () {
   export $1=$2
 }
