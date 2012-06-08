@@ -45,8 +45,8 @@ isQuote = flip elem "'\"`"
 -- based on bash(1) and dash(1) man pages
 listOperators = [ ";", "&", "&&", "||" ]
 pipelineOperators = [ "|", "|&" ]
-redirectionOperators = [ "<", ">", ">|", "<<", ">>", "<&", ">&", "<<-", "<>" ]
-operators = listOperators ++ pipelineOperators ++ redirectionOperators -- "(", ")", ";;"
+redirectionOperators = pipelineOperators ++ [ "<", ">", ">|", "<<", ">>", "<&", ">&", "<<-", "<>" ]
+operators = listOperators ++ redirectionOperators -- "(", ")", ";;"
 
 isOperator :: [String] -> ShellToken -> Bool
 isOperator ops (Operator s) = s `elem` ops
