@@ -2,7 +2,7 @@ module HaskellShell.Run (runList) where
 import qualified Control.Monad as M
 import Data.Maybe (fromJust)
 import System.Exit
-import System.IO (stdin, stdout, stderr, Handle)
+import System.IO
 import qualified System.Process as P
 import System.Posix.IO (createPipe, fdToHandle, handleToFd, closeFd)
 import HaskellShell.Builtins
@@ -22,18 +22,20 @@ runPipelineElements :: ShellState -> P.StdStream -> [G.PipelineElement] -> IO ()
 runPipelineElements _  _     [] = return ()
 --runPipelineElements input ((cmd, rs):[]) = M.void $ runCommand (P.UseHandle input) (P.UseHandle stdout) (P.UseHandle stderr) cmd
 runPipelineElements st input ((cmd, rs):rem)  = do
-                                             nextPipe <- runCommand st (getStream G.Input  rs input)
-                                                                    (getStream G.Output rs P.Inherit)
-                                                                    (getStream G.Error  rs P.Inherit)
-                                                                    cmd
+                                             nextPipe <- withStream G.Input  rs input     $ \i ->
+                                                         withStream G.Output rs P.Inherit $ \o ->
+                                                         withStream G.Error  rs P.Inherit $ \e ->
+                                                         runCommand st i o e cmd
                                              case nextPipe of
                                                Just ph -> runPipelineElements st (P.UseHandle ph) rem
                                                Nothing -> runPipelineElements st P.Inherit rem
-                                        where getStream :: G.Stream -> [G.Redirection] -> P.StdStream -> P.StdStream
-                                              getStream s rs def = case lookup s rs of
-                                                                     Just G.Pipe -> P.CreatePipe
-                                                                     --Just G.File p
-                                                                     Nothing -> def
+                                        where withStream :: G.Stream -> [G.Redirection] -> P.StdStream -> (P.StdStream -> IO a) -> IO a
+                                              withStream s rs def f = case lookup s rs of
+                                                                        Just G.Pipe -> f P.CreatePipe
+                                                                        Just (G.File path) -> withBinaryFile path WriteMode (f . P.UseHandle)
+                                                                        Just (G.AppendFile path) -> withBinaryFile path AppendMode (f . P.UseHandle)
+                                                                        --Just G.File p
+                                                                        Nothing -> f def
 
 runCommand :: ShellState -> P.StdStream -> P.StdStream -> P.StdStream -> G.Command -> IO (Maybe Handle)
 runCommand _ _ _ _ []  = return Nothing

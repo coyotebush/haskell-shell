@@ -1,0 +1,3 @@
+echo a > /tmp/shelltest
+echo b >> /tmp/shelltest
+cat /tmp/shelltest
