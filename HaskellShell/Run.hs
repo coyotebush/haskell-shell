@@ -3,7 +3,7 @@ import qualified Control.Monad as M
 import Data.Maybe (fromJust)
 import System.Exit
 import System.IO
-import qualified System.Process as P
+import qualified System.Posix.Process as PP
 import System.Posix.IO (createPipe, fdToHandle, handleToFd, closeFd)
 import HaskellShell.Builtins
 import HaskellShell.Error
@@ -22,46 +22,28 @@ runPipelineElements :: ShellState -> Handle -> [G.PipelineElement] -> IO ()
 runPipelineElements _  _     [] = return ()
 --runPipelineElements input ((cmd, rs):[]) = M.void $ runCommand (P.UseHandle input) (P.UseHandle stdout) (P.UseHandle stderr) cmd
 runPipelineElements st input ((cmd, rs):rem)  = do
-                                             nextPipe <- withStream G.Input  rs input  $ \i ->
+                                           {-nextPipe <- withStream G.Input  rs input  $ \i ->
                                                          withStream G.Output rs stdout $ \o ->
-                                                         withStream G.Error  rs stderr $ \e ->
-                                                         runCommand st (P.UseHandle i) (P.UseHandle o) (P.UseHandle e) cmd
-                                             runPipelineElements st (case nextPipe of Just ph -> ph; Nothing -> stdin) rem
-                                        where withStream :: G.Stream -> [G.Redirection] -> Handle -> (Handle -> IO a) -> IO a
+                                                         withStream G.Error  rs stderr $ \e ->-}
+                                             runCommand st input stdout stderr cmd
+                                             runPipelineElements st stdin rem
+                                      {-where withStream :: G.Stream -> [G.Redirection] -> Handle -> (Handle -> IO a) -> IO a
                                               withStream s rs def f = case lookup s rs of
                                                                         Just G.Pipe -> f undefined
                                                                         Just (G.File path) -> withBinaryFile path WriteMode f
                                                                         Just (G.AppendFile path) -> withBinaryFile path AppendMode f
-                                                                        Nothing -> f def
+                                                                        Nothing -> f def-}
 
-runCommand :: ShellState -> P.StdStream -> P.StdStream -> P.StdStream -> G.Command -> IO (Maybe Handle)
-runCommand _ _ _ _ []  = return Nothing
+--withStreams :: [G.Redirection] -> (Handle -> IO ())
+
+runCommand :: ShellState -> Handle -> Handle -> Handle -> G.Command -> IO ()
+runCommand _ _ _ _ []  = return ()
 runCommand st i o e cmd = case lookup (head cmd) builtins of
-                       Just builtin -> case o of
-                                         P.Inherit       -> do
-                                                            runBuiltin st stdout builtin cmd
-                                                            return Nothing
-                                         (P.UseHandle h) -> do
-                                                            runBuiltin st h builtin cmd
-                                                            return Nothing
-                                         P.CreatePipe    -> do
-                                                            (fr, fw) <- createPipe
-                                                            hr <- fdToHandle fr
-                                                            hw <- fdToHandle fw
-                                                            runBuiltin st hw builtin cmd
-                                                            handleToFd hw >>= closeFd
-                                                            return (Just hr)
+                       Just builtin -> runBuiltin st o builtin cmd
                        Nothing -> do
-                         (_, out, _, p) <- P.createProcess $
-                           (P.proc (head cmd) (tail cmd)) { P.std_in  = i
-                                                          , P.std_out = o
-                                                          , P.std_err = e
-                                                          }
-                         code <- P.waitForProcess p
-                         case code of
-                           ExitFailure 127 -> shellError [(head cmd), "command not found"]
-                           _               -> return ()
-                         return out
+                         pid <- PP.forkProcess $ do
+                                                 PP.executeFile (head cmd) True (tail cmd) Nothing
+                         M.void $ PP.getProcessStatus True False pid
 {-
 processOpen :: PI.ProcessHandle -> IO Bool
 processOpen p = do
