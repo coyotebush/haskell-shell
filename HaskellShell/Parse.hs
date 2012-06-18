@@ -16,15 +16,15 @@ parsePipelineElement :: [ShellToken] -> G.PipelineElement
 parsePipelineElement = (\(cmd, rs) -> (parseCommand cmd, parseRedirections rs)) . break (isOperator redirectionOperators)
                           
 parseRedirections :: [ShellToken] -> [G.Redirection]
-parseRedirections ((Operator "|" ):xs) = (G.Output, G.Pipe)
+parseRedirections ((Operator "|" ):xs) = ([1], G.Pipe)
                                          : parseRedirections xs
-parseRedirections ((Operator "|&"):xs) = (G.Output, G.Pipe) : (G.Error, G.Pipe)
+parseRedirections ((Operator "|&"):xs) = ([1, 2], G.Pipe)
                                          : parseRedirections xs
-parseRedirections ((Operator ">" ):(Word s):xs) = (G.Output, G.File s)
+parseRedirections ((Operator ">" ):(Word s):xs) = ([1], G.File s)
                                                   : parseRedirections xs
-parseRedirections ((Operator ">>"):(Word s):xs) = (G.Output, G.AppendFile s)
+parseRedirections ((Operator ">>"):(Word s):xs) = ([1], G.AppendFile s)
                                                   : parseRedirections xs
-parseRedirections ((Operator ">&"):(Word s):xs) = (G.Output, G.File s) : (G.Error, G.File s)
+parseRedirections ((Operator ">&"):(Word s):xs) = ([1, 2], G.File s)
                                                   : parseRedirections xs
 parseRedirections (_:xs) = parseRedirections xs
 parseRedirections []     = []
