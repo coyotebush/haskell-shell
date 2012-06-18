@@ -11,7 +11,7 @@ main = initializeState >>= shellLoop
 
 shellLoop :: ShellState -> IO ()
 shellLoop st = do
-               input <- IOE.try promptInput
+               input <- IOE.tryIOError promptInput
                case input of
                  Left e | IOE.isEOFError e -> putStrLn "exit"
                         | otherwise        -> ioError e
