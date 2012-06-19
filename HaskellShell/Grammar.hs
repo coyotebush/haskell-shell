@@ -1,9 +1,10 @@
 module HaskellShell.Grammar where
+import System.Posix.Types (Fd)
 
 type Argument = String
 type Command = [Argument]
-type Stream = Int
-data Destination = Inherit | Pipe | File FilePath | AppendFile FilePath
+type Stream = Fd
+data Destination = Pipe | File FilePath | AppendFile FilePath
                    deriving (Eq, Show)
 type Redirection = ([Stream], Destination)
 type PipelineElement = (Command, [Redirection])

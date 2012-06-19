@@ -1,5 +1,6 @@
 module HaskellShell.Parse (parseInput) where
 import qualified Data.List.Split as S
+import System.Posix.IO (stdInput, stdOutput, stdError)
 import qualified HaskellShell.Grammar as G
 import HaskellShell.Parse.Lex
 
@@ -16,15 +17,15 @@ parsePipelineElement :: [ShellToken] -> G.PipelineElement
 parsePipelineElement = (\(cmd, rs) -> (parseCommand cmd, parseRedirections rs)) . break (isOperator redirectionOperators)
                           
 parseRedirections :: [ShellToken] -> [G.Redirection]
-parseRedirections ((Operator "|" ):xs) = ([1], G.Pipe)
+parseRedirections ((Operator "|" ):xs) = ([stdOutput], G.Pipe)
                                          : parseRedirections xs
-parseRedirections ((Operator "|&"):xs) = ([1, 2], G.Pipe)
+parseRedirections ((Operator "|&"):xs) = ([stdOutput, stdError], G.Pipe)
                                          : parseRedirections xs
-parseRedirections ((Operator ">" ):(Word s):xs) = ([1], G.File s)
+parseRedirections ((Operator ">" ):(Word s):xs) = ([stdOutput], G.File s)
                                                   : parseRedirections xs
-parseRedirections ((Operator ">>"):(Word s):xs) = ([1], G.AppendFile s)
+parseRedirections ((Operator ">>"):(Word s):xs) = ([stdOutput], G.AppendFile s)
                                                   : parseRedirections xs
-parseRedirections ((Operator ">&"):(Word s):xs) = ([1, 2], G.File s)
+parseRedirections ((Operator ">&"):(Word s):xs) = ([stdOutput, stdError], G.File s)
                                                   : parseRedirections xs
 parseRedirections (_:xs) = parseRedirections xs
 parseRedirections []     = []
