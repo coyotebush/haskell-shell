@@ -1,4 +1,5 @@
 module HaskellShell.Run (runList) where
+import Control.Exception (bracket)
 import qualified Control.Monad as M
 import qualified Data.Map as Map
 import Data.Maybe (fromJust)
@@ -34,18 +35,19 @@ runPipelineElements st (input, close) ((cmd, rs):rem)  = do
                                                                         f hs
                                                                         return Nothing
                                               withStreams hs ((fds, dest):rs) f = case dest of
-                                                                                    G.File       path -> withBinaryFile path WriteMode  . \f -> f Nothing
-                                                                                    G.AppendFile path -> withBinaryFile path AppendMode . \f -> f Nothing
+                                                                                    G.File       path -> withBinaryFile path WriteMode  . \f x -> f (Nothing, x)
+                                                                                    G.AppendFile path -> withBinaryFile path AppendMode . \f x -> f (Nothing, x)
                                                                                     G.Pipe            -> withPipe
-                                                                                  $ \out h -> do
+                                                                                  $ \(out, h) -> do
                                                                                               withStreams (insertForKeys fds h hs) rs f
                                                                                               return out
-                                              withPipe :: (Maybe Handle -> Handle -> IO a) -> IO a
-                                              withPipe f = do
-                                                           (pr, pw) <- createPipe
-                                                           prh <- fdToHandle pr
-                                                           pwh <- fdToHandle pw
-                                                           f (Just prh) pwh
+                                              withPipe :: ((Maybe Handle, Handle) -> IO a) -> IO a
+                                              withPipe = bracket (do
+                                                                    (pr, pw) <- createPipe
+                                                                    prh <- fdToHandle pr
+                                                                    pwh <- fdToHandle pw
+                                                                    return (Just prh, pwh))
+                                                                   (closeHandle . snd)
                                               insertForKeys :: Ord k => [k] -> a -> Map.Map k a -> Map.Map k a
                                               insertForKeys [] _ m = m
                                               insertForKeys (k:ks) a m = insertForKeys ks a (Map.insert k a m)
