@@ -15,25 +15,19 @@ import HaskellShell.State
 import HaskellShell.State.History (History)
 
 runList :: ShellState -> G.List -> IO ()
-runList st = mapM_ (runPipeline st)
+runList st = mapM_ (runPipeline st (stdin, False))
 
-runPipeline :: ShellState -> G.Pipeline -> IO ()
-runPipeline st xs = do
-                 pids <- runPipelineElements st (stdin, False) xs
-                 mapM_ (PP.getProcessStatus True False) pids
---runPipeline = mapM_ (runCommand (P.P.UseHandle stdin) (P.P.UseHandle stdout) (P.P.UseHandle stderr) . snd)
-
-runPipelineElements :: ShellState -> (Handle, Bool) -> [G.PipelineElement] -> IO [ProcessID]
-runPipelineElements _  (input, True)  [] = do
-                                           closeHandle input
-                                           return []
-runPipelineElements _  _              [] = return []
---runPipelineElements input ((cmd, rs):[]) = M.void $ runCommand (P.UseHandle input) (P.UseHandle stdout) (P.UseHandle stderr) cmd
-runPipelineElements st (input, close) ((cmd, rs):rem)  = do
-                                             next <- withStreams defaultStreams rs $ runCommand st cmd
+runPipeline :: ShellState -> (Handle, Bool) -> [G.PipelineElement] -> IO ()
+runPipeline _  (input, True)  [] = closeHandle input
+runPipeline _  _              [] = return ()
+--runPipeline input ((cmd, rs):[]) = M.void $ runCommand (P.UseHandle input) (P.UseHandle stdout) (P.UseHandle stderr) cmd
+runPipeline st (input, close) ((cmd, rs):rem)  = do
+                                             (mp, mh) <- withStreams defaultStreams rs $ runCommand st cmd
                                              M.when close (closeHandle input)
-                                             pids <- runPipelineElements st (case snd next of Just h -> (h, True); Nothing -> (stdin, False)) rem
-                                             return $ case fst next of Just pid -> pid:pids; Nothing -> pids
+                                             next <- runPipeline st (case mh of Just h -> (h, True); Nothing -> (stdin, False)) rem
+                                             case mp of
+                                               Just pid -> M.void $ PP.getProcessStatus True False pid
+                                               Nothing  -> return ()
                                         where defaultStreams = Map.fromList [(stdInput, input), (stdOutput, stdout), (stdError, stderr)]
                                               withStreams :: Map.Map Fd Handle -> [G.Redirection] -> (Map.Map Fd Handle -> IO a) -> IO (a, Maybe Handle)
                                               withStreams hs []     f = do
