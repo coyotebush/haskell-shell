@@ -7,7 +7,7 @@ import System.Exit
 import System.IO
 import qualified System.Posix.Process as PP
 import System.Posix.IO
-import System.Posix.Types (Fd)
+import System.Posix.Types (Fd, ProcessID)
 import HaskellShell.Builtins
 import HaskellShell.Error
 import qualified HaskellShell.Grammar as G
@@ -18,29 +18,34 @@ runList :: ShellState -> G.List -> IO ()
 runList st = mapM_ (runPipeline st)
 
 runPipeline :: ShellState -> G.Pipeline -> IO ()
-runPipeline st = runPipelineElements st (stdin, False)
+runPipeline st xs = do
+                 pids <- runPipelineElements st (stdin, False) xs
+                 mapM_ (PP.getProcessStatus True False) pids
 --runPipeline = mapM_ (runCommand (P.P.UseHandle stdin) (P.P.UseHandle stdout) (P.P.UseHandle stderr) . snd)
 
-runPipelineElements :: ShellState -> (Handle, Bool) -> [G.PipelineElement] -> IO ()
-runPipelineElements _  (input, True)  [] = closeHandle input
-runPipelineElements _  _              [] = return ()
+runPipelineElements :: ShellState -> (Handle, Bool) -> [G.PipelineElement] -> IO [ProcessID]
+runPipelineElements _  (input, True)  [] = do
+                                           closeHandle input
+                                           return []
+runPipelineElements _  _              [] = return []
 --runPipelineElements input ((cmd, rs):[]) = M.void $ runCommand (P.UseHandle input) (P.UseHandle stdout) (P.UseHandle stderr) cmd
 runPipelineElements st (input, close) ((cmd, rs):rem)  = do
                                              next <- withStreams defaultStreams rs $ runCommand st cmd
                                              M.when close (closeHandle input)
-                                             runPipelineElements st (case next of Just h -> (h, True); Nothing -> (stdin, False)) rem
+                                             pids <- runPipelineElements st (case snd next of Just h -> (h, True); Nothing -> (stdin, False)) rem
+                                             return $ case fst next of Just pid -> pid:pids; Nothing -> pids
                                         where defaultStreams = Map.fromList [(stdInput, input), (stdOutput, stdout), (stdError, stderr)]
-                                              withStreams :: Map.Map Fd Handle -> [G.Redirection] -> (Map.Map Fd Handle -> IO ()) -> IO (Maybe Handle)
+                                              withStreams :: Map.Map Fd Handle -> [G.Redirection] -> (Map.Map Fd Handle -> IO a) -> IO (a, Maybe Handle)
                                               withStreams hs []     f = do
-                                                                        f hs
-                                                                        return Nothing
+                                                                        r <- f hs
+                                                                        return (r, Nothing)
                                               withStreams hs ((fds, dest):rs) f = case dest of
                                                                                     G.File       path -> withBinaryFile path WriteMode  . \f x -> f (Nothing, x)
                                                                                     G.AppendFile path -> withBinaryFile path AppendMode . \f x -> f (Nothing, x)
                                                                                     G.Pipe            -> withPipe
                                                                                   $ \(out, h) -> do
-                                                                                              withStreams (insertForKeys fds h hs) rs f
-                                                                                              return out
+                                                                                              (r, _) <- withStreams (insertForKeys fds h hs) rs f
+                                                                                              return (r, out)
                                               withPipe :: ((Maybe Handle, Handle) -> IO a) -> IO a
                                               withPipe = bracket (do
                                                                     (pr, pw) <- createPipe
@@ -63,15 +68,17 @@ closeHandle h = handleToFd h >>= closeFd
 
 --withStreams :: [G.Redirection] -> (Handle -> IO ())
 
-runCommand :: ShellState -> G.Command -> Map.Map Fd Handle -> IO ()
-runCommand _ [] _  = return ()
+runCommand :: ShellState -> G.Command -> Map.Map Fd Handle -> IO (Maybe ProcessID)
+runCommand _ [] _  = return Nothing
 runCommand st cmd fds = case lookup (head cmd) builtins of
-                       Just builtin -> runBuiltin st (Map.lookup stdOutput fds) builtin cmd
+                       Just builtin -> do
+                         runBuiltin st (Map.lookup stdOutput fds) builtin cmd
+                         return Nothing
                        Nothing -> do
                          pid <- PP.forkProcess $ do
                                                  Map.traverseWithKey (\i h -> handleToFd h >>= flip dupTo i) fds
                                                  PP.executeFile (head cmd) True (tail cmd) Nothing
-                         M.void $ PP.getProcessStatus True False pid
+                         return (Just pid)
 {-
 processOpen :: PI.ProcessHandle -> IO Bool
 processOpen p = do
