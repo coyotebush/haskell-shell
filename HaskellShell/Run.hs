@@ -69,7 +69,7 @@ runCommand st cmd fds = case lookup (head cmd) builtins of
                        Just builtin -> runBuiltin st (Map.lookup stdOutput fds) builtin cmd
                        Nothing -> do
                          pid <- PP.forkProcess $ do
-                                                 Map.traverseWithKey (\i h -> handleToFd h >>= dupTo i) fds
+                                                 Map.traverseWithKey (\i h -> handleToFd h >>= flip dupTo i) fds
                                                  PP.executeFile (head cmd) True (tail cmd) Nothing
                          M.void $ PP.getProcessStatus True False pid
 {-
