@@ -3,6 +3,7 @@ module HaskellShell.Run (runList) where
 import Control.Exception (bracket)
 import qualified Control.Monad as M
 import qualified Data.Map as Map
+import Data.Maybe
 
 import System.IO
 import System.Posix.Process
@@ -20,9 +21,13 @@ runPipeline :: ShellState -> (Handle, Bool) -> [G.PipelineElement] -> IO ()
 runPipeline _  (input, True) [] = closeHandle input
 runPipeline _  _             [] = return ()
 runPipeline st (input, close) ((cmd, rs):rem) = do
-  (mp, mh) <- withStreams defaultStreams rs $ runCommand st cmd
+  (mp, mhs) <- withStreams defaultStreams rs $ runCommand st cmd
   M.when close (closeHandle input)
-  next <- runPipeline st (case mh of Just h -> (h, True); Nothing -> (stdin, False)) rem
+  next <- runPipeline st
+    (case listToMaybe (catMaybes mhs) of
+      Just h -> (h, True)
+      Nothing -> (stdin, False))
+    rem
   case mp of
     Just pid -> M.void $ getProcessStatus True False pid
     Nothing  -> return ()
@@ -31,17 +36,17 @@ runPipeline st (input, close) ((cmd, rs):rem) = do
                                       , (stdError, stderr)
                                       ]
         withStreams :: Map.Map Fd Handle -> [G.Redirection]
-          -> (Map.Map Fd Handle -> IO a) -> IO (a, Maybe Handle)
+          -> (Map.Map Fd Handle -> IO a) -> IO (a, [Maybe Handle])
         withStreams hs [] f = do
           r <- f hs
-          return (r, Nothing)
+          return (r, [Nothing])
         withStreams hs ((fds, dest):rs) f = case dest of
-            G.File       path -> withBinaryFile path WriteMode  . \f x -> f (Nothing, x)
-            G.AppendFile path -> withBinaryFile path AppendMode . \f x -> f (Nothing, x)
+            G.File       path -> withBinaryFile path WriteMode  . flip curry Nothing
+            G.AppendFile path -> withBinaryFile path AppendMode . flip curry Nothing
             G.Pipe            -> withPipe
           $ \(out, h) -> do
-            (r, _) <- withStreams (insertForKeys fds h hs) rs f
-            return (r, out)
+            (r, os) <- withStreams (insertForKeys fds h hs) rs f
+            return (r, out:os)
         withPipe :: ((Maybe Handle, Handle) -> IO a) -> IO a
         withPipe = bracket (do
           (pr, pw) <- createPipe
