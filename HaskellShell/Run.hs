@@ -2,7 +2,6 @@ module HaskellShell.Run (runList) where
 
 import Control.Exception (bracket)
 import qualified Control.Monad as M
-import qualified Data.Map as Map
 import Data.Maybe
 
 import System.IO
@@ -31,12 +30,12 @@ runPipeline st (input, close) ((cmd, rs):rem) = do
   case mp of
     Just pid -> M.void $ getProcessStatus True False pid
     Nothing  -> return ()
-  where defaultStreams = Map.fromList [ (stdInput, input)
-                                      , (stdOutput, stdout)
-                                      , (stdError, stderr)
-                                      ]
-        withStreams :: Map.Map Fd Handle -> [G.Redirection]
-          -> (Map.Map Fd Handle -> IO a) -> IO (a, [Maybe Handle])
+  where defaultStreams = [ (stdInput, input)
+                         , (stdOutput, stdout)
+                         , (stdError, stderr)
+                         ]
+        withStreams :: [(Fd, Handle)] -> [G.Redirection]
+          -> ([(Fd, Handle)] -> IO a) -> IO (a, [Maybe Handle])
         withStreams hs [] f = do
           r <- f hs
           return (r, [Nothing])
@@ -54,22 +53,21 @@ runPipeline st (input, close) ((cmd, rs):rem) = do
           pwh <- fdToHandle pw
           return (Just prh, pwh))
           (closeHandle . snd)
-        insertForKeys :: Ord k => [k] -> a -> Map.Map k a -> Map.Map k a
-        insertForKeys [] _ m = m
-        insertForKeys (k:ks) a m = insertForKeys ks a (Map.insert k a m)
+        insertForKeys :: Eq k => [k] -> a -> [(k, a)] -> [(k, a)]
+        insertForKeys ks a m = [(k, a) | k <- ks] ++ filter ((`notElem` ks) . fst) m
 
 closeHandle :: Handle -> IO ()
 closeHandle h = handleToFd h >>= closeFd
 
-runCommand :: ShellState -> G.Command -> Map.Map Fd Handle -> IO (Maybe ProcessID)
+runCommand :: ShellState -> G.Command -> [(Fd, Handle)] -> IO (Maybe ProcessID)
 runCommand _ [] _  = return Nothing
 runCommand st cmd fds = case lookup (head cmd) builtins of
   Just builtin -> do
-    runBuiltin st (Map.lookup stdOutput fds) builtin cmd
+    runBuiltin st (lookup stdOutput fds) builtin cmd
     return Nothing
   Nothing -> do
     pid <- forkProcess $ do
-      Map.traverseWithKey (\i h -> handleToFd h >>= flip dupTo i) fds
+      mapM_ (\(i, h) -> handleToFd h >>= flip dupTo i) fds
       executeFile (head cmd) True (tail cmd) Nothing
     return (Just pid)
 
