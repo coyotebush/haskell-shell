@@ -4,12 +4,14 @@ import Control.Exception (bracket)
 import qualified Control.Monad as M
 import Data.Maybe
 
+import System.Exit
 import System.IO
 import System.Posix.Process
 import System.Posix.IO
 import System.Posix.Types (Fd, ProcessID)
 
 import HaskellShell.Builtins
+import HaskellShell.Error
 import qualified HaskellShell.Grammar as G
 import HaskellShell.State
 
@@ -67,7 +69,11 @@ runCommand st cmd fds = case lookup (head cmd) builtins of
     return Nothing
   Nothing -> do
     pid <- forkProcess $ do
+      msgh <- handleToFd stdout >>= dup
       mapM_ (\(i, h) -> handleToFd h >>= flip dupTo i) fds
       executeFile (head cmd) True (tail cmd) Nothing
+       `catch` \e -> fdToHandle msgh >>= \h ->
+         shellError h [show msgh, head cmd, "command not found"]
+      exitWith (ExitFailure 127)
     return (Just pid)
 

@@ -24,7 +24,7 @@ builtins = [ ("cd", changeDir)
            ]
 
 runBuiltin :: ShellState -> Maybe Handle -> Builtin -> [G.Argument] -> IO ()
-runBuiltin st h b (name:args) = handle (shellException [name]) $ b st h args
+runBuiltin st h b (name:args) = handle (shellException stdout [name]) $ b st h args
 
 mhPutStrLn (Just h) s = hPutStrLn h s
 mhPutStrLn Nothing  _ = return ()
