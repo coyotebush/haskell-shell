@@ -69,8 +69,8 @@ runCommand st cmd fds = case lookup (head cmd) builtins of
     return Nothing
   Nothing -> do
     pid <- forkProcess $ do
-      f <- handleToFd stdout >>= dup
       mapM_ (\(i, h) -> handleToFd h >>= flip dupTo i) fds
+      f <- dup stdOutput; setFdOption f CloseOnExec True
       executeFile (head cmd) True (tail cmd) Nothing
         `Control.Exception.catch` execError f
       exitWith (ExitFailure 127)
