@@ -8,6 +8,4 @@ Variable substitution
 Double-quoted strings
 Job control
 
-Parallel spawning of pipeline processes
 Allow for parse errors
-Stop pipeline on run errors
