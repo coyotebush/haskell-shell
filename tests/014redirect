@@ -1,3 +1,4 @@
 echo a > /tmp/shelltest
 echo b >> /tmp/shelltest
 cat /tmp/shelltest
+ls foobar >& /tmp/shelltest
