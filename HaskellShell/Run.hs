@@ -1,6 +1,6 @@
 module HaskellShell.Run (runList) where
 
-import Control.Exception (bracket)
+import Control.Exception (bracket, catch, IOException)
 import qualified Control.Monad as M
 import Data.Maybe
 
@@ -69,11 +69,15 @@ runCommand st cmd fds = case lookup (head cmd) builtins of
     return Nothing
   Nothing -> do
     pid <- forkProcess $ do
-      msgh <- handleToFd stdout >>= dup
+      f <- handleToFd stdout >>= dup
       mapM_ (\(i, h) -> handleToFd h >>= flip dupTo i) fds
       executeFile (head cmd) True (tail cmd) Nothing
-       `catch` \e -> fdToHandle msgh >>= \h ->
-         shellError h [show msgh, head cmd, "command not found"]
+        `Control.Exception.catch` execError f
       exitWith (ExitFailure 127)
     return (Just pid)
+  where execError :: Fd -> IOException -> IO ()
+        execError f e = do
+          h <- fdToHandle f
+          shellError h [head cmd, "command not found"]
+          hFlush h
 
