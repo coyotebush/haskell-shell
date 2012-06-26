@@ -59,7 +59,7 @@ runPipeline st (input, close) ((cmd, rs):rem) = do
         insertForKeys ks a m = [(k, a) | k <- ks] ++ filter ((`notElem` ks) . fst) m
 
 closeHandle :: Handle -> IO ()
-closeHandle h = handleToFd h >>= closeFd
+closeHandle = handleToFd M.>=> closeFd
 
 runCommand :: ShellState -> G.Command -> [(Fd, Handle)] -> IO (Maybe ProcessID)
 runCommand _ [] _  = return Nothing
