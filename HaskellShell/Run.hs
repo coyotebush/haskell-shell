@@ -69,13 +69,16 @@ runCommand st cmd fds = case lookup (head cmd) builtins of
     return Nothing
   Nothing -> do
     pid <- forkProcess $ do
-      mapM_ (\(i, h) -> handleToFd h >>= flip dupTo i) fds
+      mapM_ (\(i, h) -> handleToFd h >>= moveTo i) fds
       f <- dup stdOutput; setFdOption f CloseOnExec True
       executeFile (head cmd) True (tail cmd) Nothing
         `Control.Exception.catch` execError f
       exitWith (ExitFailure 127)
     return (Just pid)
-  where execError :: Fd -> IOException -> IO ()
+  where moveTo :: Fd -> Fd -> IO ()
+        moveTo new old = M.when (old /= new) $ do
+          dupTo old new; setFdOption old CloseOnExec True
+        execError :: Fd -> IOException -> IO ()
         execError f e = do
           h <- fdToHandle f
           shellError h [head cmd, "command not found"]
